@@ -1,3 +1,5 @@
+from copyreg import pickle
+import pickle as pkl          # added pickle lib as pkl
 import torch
 import torch.nn as nn
 import torchvision
@@ -119,12 +121,13 @@ def sort_numbered_file_names(listOfPaths, numOfFiles):
         return imageNames
 
 # This function returns a list that contains all the filepaths containing images of interest for analysis
-def organize_paths_for(directories, maxFiles):
+# def organize_paths_for(directories, maxFiles):
+def organize_paths_for(directories):
         onlyfiles = []
         for path in directories:
                 print("For images in path \'" + path + "\':\n")
                 sortedPicList = sort_numbered_file_names(
-                        [fileName for fileName in listdir(path)], maxFiles
+                        [fileName for fileName in listdir(path)], len(listdir(path))
                 ) #since the picture names are string numbers, they must be properly sorted before continuing
                 onlyfiles.extend(sortedPicList)
         print(onlyfiles)
@@ -132,26 +135,28 @@ def organize_paths_for(directories, maxFiles):
 
 # This function analyzes a specified number of file images within a directory, extracting maximum neurons from each layer and printing a matrix showing Cosine Similarity between images within the same layers of the neural network
 
-def find_max_neurons_and_layers_for(picturesOf, directories, minFiles, maxFiles, onlyfiles, usingModel):
+def find_max_neurons_and_layers_for(picturesOf, directories, onlyfiles, usingModel):
         print("\n")
         print("************************************")
         
         # Include files with specified extensions in the path directory for analysis and save to a data object for Cosine Similarity
-        currentFile = minFiles - 1
+        # currentFile = minFiles - 1
+        currentFile = 0
         data = dict()
         directoryNumber = 0
         counter = 0
         while(currentFile < len(onlyfiles)):
                 imgName = onlyfiles[currentFile]
+                path = directories[directoryNumber] # path for current directory
                 print("Finding neurons for image ", imgName, "...")
-                imgList, numOfLayers = extract_max_neurons(directories[directoryNumber] + "/" + imgName, usingModel)
+                imgList, numOfLayers = extract_max_neurons(path + "/" + imgName, usingModel)
                 counter += 1
-                if counter == maxFiles:
+                if counter == len(listdir(path)):   # maxFiles in the eachdirectory i.e 10
                         directoryNumber += 1
                         counter = 0
                 # If the extraction fails to return anything, continue to next image
                 if(imgList == None):
-                        numberOfDataPoints[directories[directoryNumber]] -= 1
+                        # numberOfDataPoints[directories[directoryNumber]] -= 1
                         currentFile += 1
                         continue
                 print(len(imgList))
@@ -168,6 +173,7 @@ def find_max_neurons_and_layers_for(picturesOf, directories, minFiles, maxFiles,
                         layerNumber = picturesOf + "Layer0" + str(layer + 1)
                 else:
                         layerNumber = picturesOf + "Layer" + str(layer + 1)
+
                 print(layerNumber)
                 neurons = {}
                 for image, allNeurons in data.items():
@@ -185,15 +191,20 @@ def find_max_neurons_and_layers_for(picturesOf, directories, minFiles, maxFiles,
 def correlSim(neuralLayersDictionary, placeInPath):
         print("************************************")
         print("Calculating Correl Similarity...\n")
+        print("testing september 3-")
         inFilePath = placeInPath + "/" + "Correl Similarity"
         if os.path.exists(inFilePath) == False: os.mkdir(inFilePath)
+        # pickle_file = open("NeuralLayersDict_stimuli_Data/NeuralLayersDictionary.pkl","rb")
+        # neuralLayersDictionary = pkl.load(pickle_file)
         for key in neuralLayersDictionary:
                 correlMatrix = np.corrcoef(neuralLayersDictionary[key].T)
                 # was correl_similarit
                 numpy.save(inFilePath + "/correl_sim_" + key + ".npy", correlMatrix)
-                matrixData = numpy.load(inFilePath + "/correl_sim_" + key + ".npy")
-                plt.imsave(inFilePath + "/correl_sim_" + key + ".png", matrixData)
+                # matrixData = numpy.load(inFilePath + "/correl_sim_" + key + ".npy")
+                # plt.imsave(inFilePath + "/correl_sim_" + key + ".png", matrixData)
+                plt.imsave(inFilePath + "/correl_sim_" + key + ".png", correlMatrix)
                 print("Correl Similarity: ", "\n", correlMatrix, "\n")
+        # pickle_file.close()
         print("************************************")
         print("Done!\n")
 
@@ -362,13 +373,13 @@ def run_analytics_suite(neuralLayersDictionary, placeInPath, picDirectory, numbe
         correlSim(neuralLayersDictionary, placeInPath)
         #cluster_analysis(neuralLayersDictionary, placeInPath)
         #manifold_analysis(neuralLayersDictionary, "MDS", placeInPath, picDirectory, numberOfDataPoints)
-        manifold_analysis(neuralLayersDictionary, "TSNE", placeInPath, picDirectory, numberOfDataPoints)
+        #manifold_analysis(neuralLayersDictionary, "TSNE", placeInPath, picDirectory, numberOfDataPoints)
         print("PearsonCorr, H-Cluster, MDS, and TSNE analyses complete.\n")
 
-def number_of_scatterplot_dots(directoriesForAnalysis, numberOfFiles):
+def number_of_scatterplot_dots(directoriesForAnalysis):
         categoryList = dict()
         for categories in directoriesForAnalysis:
-                categoryList[categories] = numberOfFiles
+                categoryList[categories] = len(listdir(categories))
         return categoryList
         
 
