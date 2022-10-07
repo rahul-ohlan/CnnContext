@@ -1,10 +1,13 @@
+# from copyreg import pickle
+import pickle
 from math import floor, sqrt
 import os
 import scipy.stats as stats
 import numpy as np
 import pandas
 
-basePath='/u/erdos/cnslab/cnnContext/pretrainStudy/'
+# basePath='/u/erdos/cnslab/cnnContext/pretrainStudy/'  # let's keep it local for now
+basePath = r'C:\Users\rahul__ohlan\OneDrive\Desktop\coding\FordhamDS\Research\ComputerVision\code\pretrainStudy'
 
 layerData = {
     'Alexnet_RP': list(range(11)),
@@ -17,7 +20,7 @@ layerData = {
     'Resnet101_RP': list(range(7)),
     'Resnet152_RP': list(range(7)),
     'Resnext50_32x4d': list(range(7)),
-    'Vgg16': list(range(28)),
+    'Vgg16': list(range(31)),    # changed it from 28 to 31
     'Vgg19': list(range(35))
 }
 
@@ -53,14 +56,14 @@ def confoundExpansion(confoundMatrix, dimNumber, expansionNumber):
     return confoundMatrix
 #####
 
-def computeRatios(contexts=2, useConfounds=False):
+def computeRatios(contexts=73, useConfounds=False):
    database = pandas.DataFrame(columns=['network', 'layer', 'ratioCon', 'pCon1', 'pConRel', 'conErrBars', 'ratioCat', 'pCat1', 'pCatRel', 'catErrBars', 'pConVCat'])
    files = os.listdir()
 
    # This for loop goes through all available models and networks folders containing the results of interest (Pearson's correlation matrices)
    for modelName in range(len(files)):
        #if files[modelName] == "71-confounds" or files[modelName] =="__pycache__" or files[modelName]=="data" : continue
-       if not os.path.isdir(basePath+files[modelName]) or files[modelName]=="__pycache__" or files[modelName]=="data": continue
+       if not os.path.isdir(basePath+"\\"+files[modelName]) or files[modelName] == '__pycache__' or files[modelName] == 'data' or files[modelName]=="NeuralLayersDict" or files[modelName] == "NeuralLayersDict_stimuli_Data": continue
        
        subFiles = os.listdir("./" + files[modelName] + "/")
        for x in range(len(subFiles)):
@@ -182,12 +185,25 @@ def computeRatios(contexts=2, useConfounds=False):
        pVec1con=[]
        mnVecCon=[]
        conErrBars = []
+
+       # dictionary to capture in/out context values from each layer
+       layer_context = dict()
    
        print('contextValues length: ', len(ratioCon))
        for lay in range(len(layVec)):
            # In/Out-context ratios for each layer of interest with confounds removed
-           inConValues = inContextValues[(contexts*lay):(contexts*lay)+contexts]
+        
+           layerNumber = None
+           if lay < 9:
+            layerNumber = "layer" + "0" + str(lay+1)
+           else:
+            layerNumber = "layer" + str(lay+1)
+           inConValues = inContextValues[(contexts*lay):(contexts*lay)+contexts]  # 73 values in each layer ideally
            outConValues = outContextValues[(contexts*lay):(contexts*lay)+contexts]
+           
+           layer_context[layerNumber+"_inCon"] = inConValues
+           layer_context[layerNumber+"_outCon"] = inConValues
+           layer_context[layerNumber+"_inOutRatio"] = np.array(inConValues)/np.array(outConValues)
            
            # T-tests for contexts
            out=stats.ttest_rel(inConValues, outConValues)
@@ -196,6 +212,7 @@ def computeRatios(contexts=2, useConfounds=False):
            pVec1con.append(out.pvalue)
            mnVecCon.append(np.array(ratioCon[(contexts*lay):(contexts*lay)+contexts]).mean())
            conErrBars.append(np.std(ratioCon[(contexts*lay):(contexts*lay)+contexts])/sqrt(contexts))
+       layer_dataframe_context = pandas.DataFrame(layer_context)
        print('\nGood, contexts complete.\n')
    
        # Calculate category ratios and p-values
@@ -212,6 +229,8 @@ def computeRatios(contexts=2, useConfounds=False):
        pVecRconVcat=[] # Holds the p-values for pairwise t-tests between category and context for each layer
    
        print('categoryValues: ', len(ratioCat))
+       # dictionary to capture inOut Category value for each layer:
+       layer_category = dict()
        for lay in range(len(layVec)):
            print("testin")
            networkName.append(files[modelName])
@@ -220,8 +239,18 @@ def computeRatios(contexts=2, useConfounds=False):
            print('(categories*lay)+categories) = ', (categories*lay)+categories)
            
            # # In/Out-category ratios for each layer of interest with confounds removed
+           layerNumber = None
+           if lay < 9:
+            layerNumber = "layer" + "0" + str(lay+1)
+           else:
+            layerNumber = "layer" +  str(lay+1)
+
            inCatValues = inCategoryValues[(categories*lay):(categories*lay)+categories]
            outCatValues = outCategoryValues[(categories*lay):((categories*lay)+categories)]
+
+           layer_category[layerNumber+"_inCat"] = inCatValues
+           layer_category[layerNumber+"_outCat"] = outCatValues
+           layer_category[layerNumber+"_inOutRatio"] = np.array(inCatValues)/np.array(outCatValues)
    
            # T-tests for categories
            out=stats.ttest_rel(inCatValues, outCatValues)
@@ -234,12 +263,22 @@ def computeRatios(contexts=2, useConfounds=False):
            # Calculate pairwise t-test for categories and context
            out=stats.ttest_rel(ratioCat[(categories*lay):(categories*(lay+1)):2],ratioCon[(contexts*lay):(contexts*(lay+1))])
            pVecRconVcat.append(out.pvalue)
+       layer_dataframe_category = pandas.DataFrame(layer_category)
        print('\nGood, categories complete.\n')
-   
+
+       # save the two dictionarie in a pickle file
+       with open("layer_context_data.pkl",'wb') as layCon:
+        pickle.dump(layer_dataframe_context,layCon)
+
+       with open("layer_category_data.pkl",'wb') as layCat:
+        pickle.dump(layer_dataframe_category,layCat)
        # Create and save context/categories ratios and p-values, concatonate with previous results
        dataMat=[networkName, layVec, mnVecCon, pVec1con, pVecRcon, conErrBars, mnVecCat, pVec1cat, pVecRcat, catErrBars, pVecRconVcat]
        df=pandas.DataFrame(np.array(dataMat).T,columns=['network', 'layer', 'ratioCon', 'pCon1', 'pConRel', 'conErrBars', 'ratioCat', 'pCat1', 'pCatRel', 'catErrBars', 'pConVCat'])
        database = database.append(df)
+
+
+   
    
    # Save all dataframe results to a single .csv file
    database.to_csv("all_con_cat_ratios.csv")
