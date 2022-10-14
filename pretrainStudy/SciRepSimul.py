@@ -48,10 +48,7 @@ def get_layer_ratios():
     for i in range(len(contexts)):
         contexts[i] = "data/STIMULI-Shira-F73/" + contexts[i]
     directoriesForAnalysis = contexts
-    # now we don't want to put a limit on number of file to load for now
-    # startFileNumber = 1 
-    # endFileNumber = 10
-    # filePaths = organize_paths_for(directoriesForAnalysis, endFileNumber)
+
     filePaths = organize_paths_for(directoriesForAnalysis)
 
     with open("layer_category_data.pkl",'rb') as layCat:
@@ -69,14 +66,16 @@ def get_layer_ratios():
         c+=3
     print(ratioCols)
 
-    temp = dict()
+    topFiveCon = dict()
+    bottomFiveCon = dict()
     for layer in ratioCols:
         t5 = layCon_df[layer].sort_values(ascending = False).iloc[0:5]
-        temp[layer+"_top5"] = tuple(zip(t5.index,t5.values))
+        topFiveCon[layer+"_top5"] = tuple(zip(t5.index,t5.values))
         b5 = layCon_df[layer].sort_values().iloc[0:5]
-        temp[layer+"_least5"] = tuple(zip(b5.index,b5.values))
+        bottomFiveCon[layer+"_least5"] = tuple(zip(b5.index,b5.values))
 
-    pandas.DataFrame(temp).to_csv("layers_context.csv")
+    pandas.DataFrame(topFiveCon).to_csv("topFiveContexts.csv")
+    pandas.DataFrame(bottomFiveCon).to_csv("bottomFiveContexts.csv")
 
 
     categories = list()
@@ -87,14 +86,16 @@ def get_layer_ratios():
 
     layCat_df.index = categories
 
-    temp = dict()
+    topFiveCat = dict()
+    bottomFiveCat = dict()
     for layer in ratioCols:
         t5 = layCon_df[layer].sort_values(ascending = False).iloc[0:5]
-        temp[layer+"_top5"] = tuple(zip(t5.index,t5.values))
+        topFiveCat[layer+"_top5"] = tuple(zip(t5.index,t5.values))
         b5 = layCon_df[layer].sort_values().iloc[0:5]
-        temp[layer+"_least5"] = tuple(zip(b5.index,b5.values))
+        bottomFiveCat[layer+"_least5"] = tuple(zip(b5.index,b5.values))
 
-    pandas.DataFrame(temp).to_csv("layers_category.csv")
+    pandas.DataFrame(topFiveCat).to_csv("topFiveCategories.csv")
+    pandas.DataFrame(bottomFiveCat).to_csv("bottomFiveCategories.csv")
     
     
 # compute ratio of in-category/out-category and in-context/out-context
