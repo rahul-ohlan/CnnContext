@@ -27,6 +27,15 @@ def str2Num(inStr) :
         if inStr==possibleVals[i]:
             return i
 
+# generate indices to extract train and test data
+def trainTestInds(dataSize,kSplits,numSplit):
+   trainInd=list(range(dataSize))
+   splitSize=int(np.round(dataSize/kSplits))
+   testInd =list(range(splitSize*numSplit,splitSize*(numSplit+1)))
+   for num in testInd:
+     trainInd=np.delete(trainInd,np.where(trainInd==num)[0])
+   return trainInd, testInd
+
 # initialize xMat and yMat
 # in xMat:
 #   first  20 columns are the FCN score for each object label
@@ -54,9 +63,11 @@ dictWt={}
 for objInd in range(len(wtVec)):
     dictWt[objInd]=1/wtVec[objInd] * total/2.0
 
+trainInd, testInd = trainTestInds(xMat.shape[0],10,3)
+
 # or consider trueY instead of trueMat
 #model.fit(xMat[:10000,:],trueY[:10000,:],batch_size=128,epochs=100,verbose=1):s
-[histTrain,histVal]=fit(model,xMat[3000:13000,:],trueLabs[3000:13000],epochs=4000,shuffle=False,valRat=.5,patience=10) #,mustPrune=True,smartInit=True)
+[histTrain,histVal]=fit(model,xMat[trainInd,:],trueLabs[trainInd],epochs=4000,shuffle=False,valRat=.75,patience=10) #,mustPrune=True,smartInit=True)
 #[histTrain,histVal]=fit(model,xMat[:10000,:],trueLabs[:10000],batch_size=128,epochs=800,shuffle=True,patience=10),mustPrune=True,smartInit=True)
 # add smartInit above
 #batch_size=128,epochs=300,verbose=1,shuffle=True,validation_split=0.3,class_weight=dictWt, callbacks=[early_stopping])
@@ -64,14 +75,14 @@ for objInd in range(len(wtVec)):
 #oldResults=model(xMat[:10000,:])
 #oldLabels=np.argmax(oldResults,axis=1)
 
-newResults=model(torch.Tensor(xMat[:3000,:])).detach().numpy()
+newResults=model(torch.Tensor(xMat[testInd,:])).detach().numpy()
 newLabels=np.argmax(newResults,axis=1)
 
-yLabels=np.argmax(trueY[:3000,:],axis=1)
+yLabels=np.argmax(trueY[testInd,:],axis=1)
 
 
 # consider trueLabs
-np.where(newLabels[:1000]-yLabels[:1000]!=0)[0].shape
+accuracy=1-np.where(newLabels-yLabels!=0)[0].shape[0]/yLabels.shape[0]
 
 
 
