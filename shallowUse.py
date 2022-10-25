@@ -11,7 +11,8 @@ import pandas as pd
 
 
 # load data from LogScene+Cols.csv
-dfKnownOverlap=pd.read_csv('LogScene+Cols.csv')
+#dfKnownOverlap=pd.read_csv('LogScene+Cols.csv')
+dfKnownOverlap=pd.read_csv('rebalLogScene+Cols.csv')
 
 # initialize yMatNew
 
@@ -67,7 +68,7 @@ trainInd, testInd = trainTestInds(xMat.shape[0],10,3)
 
 # or consider trueY instead of trueMat
 #model.fit(xMat[:10000,:],trueY[:10000,:],batch_size=128,epochs=100,verbose=1):s
-[histTrain,histVal]=fit(model,xMat[trainInd,:],trueLabs[trainInd],epochs=4000,shuffle=False,valRat=.75,patience=10) #,mustPrune=True,smartInit=True)
+[histTrain,histVal]=fit(model,xMat[trainInd,:],trueLabs[trainInd],epochs=4000,shuffle=True,valRat=.75,patience=10) #,mustPrune=True,smartInit=True)
 #[histTrain,histVal]=fit(model,xMat[:10000,:],trueLabs[:10000],batch_size=128,epochs=800,shuffle=True,patience=10),mustPrune=True,smartInit=True)
 # add smartInit above
 #batch_size=128,epochs=300,verbose=1,shuffle=True,validation_split=0.3,class_weight=dictWt, callbacks=[early_stopping])

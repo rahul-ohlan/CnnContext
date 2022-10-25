@@ -29,9 +29,10 @@ model = MyNet().to(device=device)
 #criterion = nn.CrossEntropyLoss()
 wtVec=np.array([186,943,7375,203,240,223,1176,212,150,98,353,175,538,250,121,203,162,249,184,270])
 total=np.sum(wtVec)
-criterion = nn.CrossEntropyLoss(weight=torch.Tensor(0.5*total/np.array(wtVec)))
+#criterion = nn.CrossEntropyLoss(weight=torch.Tensor(0.5*total/np.array(wtVec)))
+criterion = nn.CrossEntropyLoss()
 
-optimizer = torch.optim.SGD(model.parameters(), lr = .01) #lr=1 was good unweighted # lr was 0.01
+optimizer = torch.optim.SGD(model.parameters(), lr = .1) #lr=1 was good unweighted # lr was 0.01
 # seems like better results with lr=1, valRat=.5, shuffle=False, epochs=4000
 # results are best on training data and validation data, quite poor on 
 # remaining testing data (10000:13000); performance even better on validation
