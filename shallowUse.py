@@ -11,8 +11,8 @@ import pandas as pd
 
 
 # load data from LogScene+Cols.csv
-#dfKnownOverlap=pd.read_csv('LogScene+Cols.csv')
-dfKnownOverlap=pd.read_csv('rebalLogScene+Cols.csv')
+dfKnownOverlap=pd.read_csv('LogScene+Cols.csv')
+#dfKnownOverlap=pd.read_csv('rebalLogScene+Cols.csv')
 
 # initialize yMatNew
 
@@ -45,12 +45,33 @@ xMat=dfKnownOverlap.iloc[:,-63:-21].to_numpy()
 xMat=np.delete(xMat,20,axis=1)
 xMat=np.delete(xMat,20,axis=1)
 
+
 xMat[:,:20]=np.log10(xMat[:,:20]+3)
 
 trueLabs=np.zeros(dfKnownOverlap.shape[0])
 
 for i in range(trueLabs.shape[0]):
    trueLabs[i]=str2Num(dfKnownOverlap['OBJECT (PAPER)'].iloc[i])
+
+permScenes=True
+# rand permute scenes
+if permScenes:
+  picNums=dfKnownOverlap['image_id_x'].to_numpy()
+  picNumsUnique=np.unique(picNums)
+  indPerm=np.random.permutation(picNumsUnique.shape[0])
+  picNumsPerm=picNumsUnique[indPerm]
+  xMatCopy=xMat.copy()
+  trueLabsCopy=trueLabs.copy()
+  k=0
+  for sceneInd in range(len(picNumsPerm)):
+    currPicRows=np.where(picNums==picNumsPerm[sceneInd])[0]
+    xMatCopy[list(range(k,k+len(currPicRows))),:]=xMat[currPicRows,:]
+    trueLabsCopy[list(range(k,k+len(currPicRows)))]=trueLabs[currPicRows]
+    k=k+len(currPicRows)
+    #print([sceneInd,k])
+  
+  xMat=xMatCopy
+  trueLabs=trueLabsCopy
 
 trueY = np.zeros((trueLabs.shape[0],20))
 
@@ -66,17 +87,23 @@ for objInd in range(len(wtVec)):
 
 trainInd, testInd = trainTestInds(xMat.shape[0],10,3)
 
+
+initLearning(learnRate=.1,rebalance=True)
+
+global model
+#print('here is the use model:')
+#print(model)
+
 # or consider trueY instead of trueMat
 #model.fit(xMat[:10000,:],trueY[:10000,:],batch_size=128,epochs=100,verbose=1):s
-[histTrain,histVal]=fit(model,xMat[trainInd,:],trueLabs[trainInd],epochs=4000,shuffle=True,valRat=.75,patience=10) #,mustPrune=True,smartInit=True)
+[histTrain,histVal]=fit(model,xMat[trainInd,:],trueLabs[trainInd],epochs=4000,shuffle=False,valRat=.75,patience=30) #,mustPrune=True,smartInit=True)
 #[histTrain,histVal]=fit(model,xMat[:10000,:],trueLabs[:10000],batch_size=128,epochs=800,shuffle=True,patience=10),mustPrune=True,smartInit=True)
 # add smartInit above
 #batch_size=128,epochs=300,verbose=1,shuffle=True,validation_split=0.3,class_weight=dictWt, callbacks=[early_stopping])
-
 #oldResults=model(xMat[:10000,:])
 #oldLabels=np.argmax(oldResults,axis=1)
 
-newResults=model(torch.Tensor(xMat[testInd,:])).detach().numpy()
+newResults=fwdPass(torch.Tensor(xMat[testInd,:])).detach().numpy()
 newLabels=np.argmax(newResults,axis=1)
 
 yLabels=np.argmax(trueY[testInd,:],axis=1)
@@ -84,6 +111,4 @@ yLabels=np.argmax(trueY[testInd,:],axis=1)
 
 # consider trueLabs
 accuracy=1-np.where(newLabels-yLabels!=0)[0].shape[0]/yLabels.shape[0]
-
-
 

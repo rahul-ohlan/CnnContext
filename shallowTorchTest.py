@@ -3,6 +3,7 @@ from torch import nn
 import torch.nn.utils.prune as prune
 import torch.nn.functional as F
 import numpy as np
+from sklearn.utils import resample
 
 # possible prunings:
 # prune.random_unstructured(model.fc1,name="weight",amount=.3)
@@ -23,16 +24,33 @@ class MyNet(nn.Module):
         x = self.fc1(x)
         return x
 
-model = MyNet().to(device=device)
+model=1
+criterion=2
+optimizer=3
+rebalanceBool=False
+
+def initLearning(learnRate=1, reweight=False, rebalance=False):
+  global model
+  model = MyNet().to(device=device)
+  
+  global criterion
+  #criterion = nn.CrossEntropyLoss()
+  wtVec=np.array([186,943,7375,203,240,223,1176,212,150,98,353,175,538,250,121,203,162,249,184,270])
+  total=np.sum(wtVec)
+  if reweight :
+    criterion = nn.CrossEntropyLoss(weight=torch.Tensor(0.5*total/np.array(wtVec)))
+  else:
+    criterion = nn.CrossEntropyLoss()
+  
+  global rebalanceBool
+  rebalanceBool = rebalance
+  
+  global optimizer
+  optimizer = torch.optim.SGD(model.parameters(), lr = learnRate) #lr=1 was good unweighted # lr was 0.01
+  
+  print('model and optimizer initialized')
 
 
-#criterion = nn.CrossEntropyLoss()
-wtVec=np.array([186,943,7375,203,240,223,1176,212,150,98,353,175,538,250,121,203,162,249,184,270])
-total=np.sum(wtVec)
-#criterion = nn.CrossEntropyLoss(weight=torch.Tensor(0.5*total/np.array(wtVec)))
-criterion = nn.CrossEntropyLoss()
-
-optimizer = torch.optim.SGD(model.parameters(), lr = .1) #lr=1 was good unweighted # lr was 0.01
 # seems like better results with lr=1, valRat=.5, shuffle=False, epochs=4000
 # results are best on training data and validation data, quite poor on 
 # remaining testing data (10000:13000); performance even better on validation
@@ -63,11 +81,35 @@ optimizer = torch.optim.SGD(model.parameters(), lr = .1) #lr=1 was good unweight
 #       'horseScRelate', 'dogScRelate', 'motorcycleScRelate', 'bicycleScRelate',
 #       'boatScRelate'],
 
+def upsample(feats,labs):
+   #classCount=df_LS['OBJECT (PAPER)'].value_counts()
+   classCount=np.histogram(labs,len(np.unique(labs)))[0]
+   maxClass=classCount.argmax()
+   boostNum=np.zeros(classCount.shape[0])
+   subClassDf={}
+   subClassDf_upsamp={}
+   featsList=feats.T.tolist()
+   featsList.append(labs.tolist())
+   feats=np.array(featsList).T
+   for keyNum in range(len(classCount)):
+     #boostNum[key]=classCount['person']/classCount[key]
+     boostNum[keyNum]=classCount[maxClass]/classCount[keyNum]
+     subClassDf[keyNum]=feats[np.where(labs==keyNum)[0],:]
+     subClassDf_upsamp[keyNum]=resample(subClassDf[keyNum],n_samples=int(np.round(classCount[keyNum]*boostNum[keyNum])),replace=True)
+   allUpSamp=subClassDf_upsamp[0]
+   for keyNum in range(1, len(classCount)):
+     allUpSamp=np.hstack((allUpSamp.T,subClassDf_upsamp[keyNum].T)).T
+   
+   return allUpSamp[:,:-1], allUpSamp[:,-1]
+
+
 def fit(net,feats,labs,batch_size=np.Inf, epochs=20, shuffle=True, valRat=.8,patience=5,mustPrune=False,smartInit=False):
     ##train = datasets.MNIST('', train = True, transform = transforms, download = True)
     #train, valid = random_split(train,[50000,10000])
     #trainloader = DataLoader(train, batch_size=32)
     #validloader = DataLoader(valid, batch_size=32)
+    #print('here is our model:')
+    #print(model)
     if shuffle:
         permVals=np.random.permutation(feats.shape[0])
         feats=feats[permVals,:]
@@ -79,6 +121,10 @@ def fit(net,feats,labs,batch_size=np.Inf, epochs=20, shuffle=True, valRat=.8,pat
     labsTrain=labs[:valPartit]
     featsVal=feats[valPartit:,:]
     labsVal=labs[valPartit:]
+    if rebalanceBool: # up-sample under-represented data
+      featsTrain,labsTrain = upsample(featsTrain, labsTrain)
+      featsVal, labsVal    = upsample(featsVal,   labsVal)
+    
     dataFull=featsTrain
     labelsFull=labsTrain
     if smartInit:
@@ -145,7 +191,7 @@ def fit(net,feats,labs,batch_size=np.Inf, epochs=20, shuffle=True, valRat=.8,pat
         lossVal = criterion(targetVal,torch.LongTensor(labsVal))
         loss_hist.append(loss.item())
         lossVal_hist.append(lossVal.item())
-        if len(lossVal_hist)>10:
+        if len(lossVal_hist)>patience:
             if np.min(lossVal_hist[-patience:])>lossVal_hist[-(patience+1)]:
                 return loss_hist, lossVal_hist
         # Calculate gradients 
@@ -175,3 +221,9 @@ def fit(net,feats,labs,batch_size=np.Inf, epochs=20, shuffle=True, valRat=.8,pat
 #            min_valid_loss = valid_loss
 #            # Saving State Dict
 #            torch.save(model.state_dict(), 'saved_model.pth')
+
+def fwdPass(inTensor):
+  return model(inTensor)
+
+def get_model() :
+  return model
