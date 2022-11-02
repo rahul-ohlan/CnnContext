@@ -11,7 +11,8 @@ import pandas as pd
 
 
 # load data from LogScene+Cols.csv
-dfKnownOverlap=pd.read_csv('LogScene+Cols.csv')
+#dfKnownOverlap=pd.read_csv('LogScene+Cols.csv')
+dfKnownOverlap=pd.read_csv('LogRewtEK_Oct4.csv')
 #dfKnownOverlap=pd.read_csv('rebalLogScene+Cols.csv')
 
 # initialize yMatNew
@@ -41,10 +42,33 @@ def trainTestInds(dataSize,kSplits,numSplit):
 # in xMat:
 #   first  20 columns are the FCN score for each object label
 #   second 20 columns are the object-scene relation (based on wordnet)
+dfKnownOverlap=dfKnownOverlap[dfKnownOverlap.iloc[:,-41:-21].sum(axis=1)!=0]
+
 xMat=dfKnownOverlap.iloc[:,-63:-21].to_numpy()
 xMat=np.delete(xMat,20,axis=1)
 xMat=np.delete(xMat,20,axis=1)
 
+dfCols=dfKnownOverlap.columns[-63:-21]
+dfCols=dfCols.delete(20)
+dfCols=dfCols.delete(20)
+dfCols=list(dfCols)
+
+possibleVals=['tvmonitor', 'chair', 'person', 'potted plant', 'boat', 'bird', 
+    'car','bus', 'cat', 'aeroplane', 'dining table', 'sofa', 'bottle',
+    'sheep', 'train', 'horse', 'dog', 'motorbike', 'bicycle', 'cow']
+
+indVec=np.zeros(40)
+k=0
+for word in possibleVals:
+  indVec[k]=(dfCols.index(word))
+  indVec[k+20]=(dfCols.index(word+'ScRelate'))
+  k+=1
+
+tempMat=xMat
+
+for k in range(40):
+  print(indVec[k])
+  xMat[:,k]=tempMat[:,int(indVec[k])]
 
 xMat[:,:20]=np.log10(xMat[:,:20]+3)
 
