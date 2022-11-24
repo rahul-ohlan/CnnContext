@@ -38,11 +38,14 @@ def trainTestInds(dataSize,kSplits,numSplit):
      trainInd=np.delete(trainInd,np.where(trainInd==num)[0])
    return trainInd, testInd
 
+# drop columns where no object-scene info is available
+dfKnownOverlap=dfKnownOverlap[dfKnownOverlap.iloc[:,-41:-21].sum(axis=1)!=0]
+
+
 # initialize xMat and yMat
 # in xMat:
 #   first  20 columns are the FCN score for each object label
 #   second 20 columns are the object-scene relation (based on wordnet)
-dfKnownOverlap=dfKnownOverlap[dfKnownOverlap.iloc[:,-41:-21].sum(axis=1)!=0]
 
 xMat=dfKnownOverlap.iloc[:,-63:-21].to_numpy()
 xMat=np.delete(xMat,20,axis=1)
@@ -53,6 +56,7 @@ dfCols=dfCols.delete(20)
 dfCols=dfCols.delete(20)
 dfCols=list(dfCols)
 
+#### reorganize columns to be consistent with rows! ##########
 possibleVals=['tvmonitor', 'chair', 'person', 'potted plant', 'boat', 'bird', 
     'car','bus', 'cat', 'aeroplane', 'dining table', 'sofa', 'bottle',
     'sheep', 'train', 'horse', 'dog', 'motorbike', 'bicycle', 'cow']
@@ -69,6 +73,8 @@ tempMat=xMat
 for k in range(40):
   print(indVec[k])
   xMat[:,k]=tempMat[:,int(indVec[k])]
+
+######## finish flipping around columns ###########
 
 xMat[:,:20]=np.log10(xMat[:,:20]+3)
 

@@ -41,14 +41,15 @@ def trainTestInds(dataSize,kSplits,numSplit):
 # drop columns where no object-scene info is available
 dfScenes=dfKnownOverlap['Places365 Resnet50 Image Classification']
 #dfKnownOverlap=dfKnownOverlap[dfKnownOverlap.iloc[:,-41:-21].sum(axis=1)!=0]
-dfPCA=pd.read_csv('ScenePrincComp.csv',index_col=0)
+dfPCA=pd.read_csv('ScenePrincComp40.csv',index_col=0)
 
 # initialize xMat and yMat
 # in xMat:
 #   first  20 columns are the FCN score for each object label
 #   second 20 columns are the object-scene relation (based on wordnet)
 
-xMat=np.zeros((dfKnownOverlap.shape[0],40))
+numInput=60 #was 40, 60
+xMat=np.zeros((dfKnownOverlap.shape[0],numInput))
 xMat[:,:20]=dfKnownOverlap.iloc[:,-63:-43].to_numpy()
 
 errorList=[]
@@ -105,27 +106,27 @@ for objInd in range(len(wtVec)):
 trainInd, testInd = trainTestInds(xMat.shape[0],10,3)
 
 
-initLearning(learnRate=.1,rebalance=True)
+initLearning(learnRate=.1,rebalance=True, numInput=numInput)
 
 global model
 #print('here is the use model:')
 #print(model)
 
-## or consider trueY instead of trueMat
-##model.fit(xMat[:10000,:],trueY[:10000,:],batch_size=128,epochs=100,verbose=1):s
-#[histTrain,histVal]=fit(model,xMat[trainInd,:],trueLabs[trainInd],epochs=4000,shuffle=False,valRat=.75,patience=30) #,mustPrune=True,smartInit=True)
-##[histTrain,histVal]=fit(model,xMat[:10000,:],trueLabs[:10000],batch_size=128,epochs=800,shuffle=True,patience=10),mustPrune=True,smartInit=True)
-## add smartInit above
-##batch_size=128,epochs=300,verbose=1,shuffle=True,validation_split=0.3,class_weight=dictWt, callbacks=[early_stopping])
-##oldResults=model(xMat[:10000,:])
-##oldLabels=np.argmax(oldResults,axis=1)
-#
-#newResults=fwdPass(torch.Tensor(xMat[testInd,:])).detach().numpy()
-#newLabels=np.argmax(newResults,axis=1)
-#
-#yLabels=np.argmax(trueY[testInd,:],axis=1)
-#
-#
-## consider trueLabs
-#accuracy=1-np.where(newLabels-yLabels!=0)[0].shape[0]/yLabels.shape[0]
-#
+# or consider trueY instead of trueMat
+#model.fit(xMat[:10000,:],trueY[:10000,:],batch_size=128,epochs=100,verbose=1):s
+[histTrain,histVal]=fit(model,xMat[trainInd,:],trueLabs[trainInd],epochs=4000,shuffle=False,valRat=.75,patience=30) #,mustPrune=True,smartInit=True)
+#[histTrain,histVal]=fit(model,xMat[:10000,:],trueLabs[:10000],batch_size=128,epochs=800,shuffle=True,patience=10),mustPrune=True,smartInit=True)
+# add smartInit above
+#batch_size=128,epochs=300,verbose=1,shuffle=True,validation_split=0.3,class_weight=dictWt, callbacks=[early_stopping])
+#oldResults=model(xMat[:10000,:])
+#oldLabels=np.argmax(oldResults,axis=1)
+
+newResults=fwdPass(torch.Tensor(xMat[testInd,:])).detach().numpy()
+newLabels=np.argmax(newResults,axis=1)
+
+yLabels=np.argmax(trueY[testInd,:],axis=1)
+
+
+# consider trueLabs
+accuracy=1-np.where(newLabels-yLabels!=0)[0].shape[0]/yLabels.shape[0]
+

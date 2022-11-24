@@ -16,9 +16,9 @@ device = torch.device("cpu")
 # pruning guidance from: https://pytorch.org/tutorials/intermediate/pruning_tutorial.html
 
 class MyNet(nn.Module):
-    def __init__(self):
+    def __init__(self,numInput=40):
         super(MyNet, self).__init__()
-        self.fc1 = nn.Linear(40,20)
+        self.fc1 = nn.Linear(numInput,20)
 
     def forward(self, x):
         x = self.fc1(x)
@@ -29,9 +29,9 @@ criterion=2
 optimizer=3
 rebalanceBool=False
 
-def initLearning(learnRate=1, reweight=False, rebalance=False):
+def initLearning(learnRate=1, reweight=False, rebalance=False, numInput=40):
   global model
-  model = MyNet().to(device=device)
+  model = MyNet(numInput).to(device=device)
   
   global criterion
   #criterion = nn.CrossEntropyLoss()
