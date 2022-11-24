@@ -48,6 +48,7 @@ dfPCA=pd.read_csv('ScenePrincComp40.csv',index_col=0)
 #   first  20 columns are the FCN score for each object label
 #   second 20 columns are the object-scene relation (based on wordnet)
 
+# accuracy seems roughly equal with 20, 40, 60 PCs
 numInput=60 #was 40, 60
 xMat=np.zeros((dfKnownOverlap.shape[0],numInput))
 xMat[:,:20]=dfKnownOverlap.iloc[:,-63:-43].to_numpy()
@@ -64,7 +65,8 @@ for row in dfScenes:
 dfCols=dfKnownOverlap.columns[-63:-43]
 
 
-#xMat[:,:10]=np.log10(xMat[:,:10]+3)
+# taking log of FCN scores only seems to hurt
+#xMat[:,:20]=np.log10(xMat[:,:20]+3)
 
 trueLabs=np.zeros(dfKnownOverlap.shape[0])
 
