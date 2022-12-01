@@ -50,7 +50,8 @@ dfPCA=pd.read_csv('ScenePrincComp40.csv',index_col=0)
 #   second 20 columns are the object-scene relation (based on wordnet)
 
 # accuracy seems roughly equal with 20, 40, 60 PCs
-numInput=60 #was 40, 60
+#numInput=60 #was 40, 60
+numInput=30
 xMat=np.zeros((dfKnownOverlap.shape[0],numInput))
 xMat[:,:20]=dfKnownOverlap.iloc[:,-63:-43].to_numpy()
 
@@ -58,7 +59,7 @@ errorList=[]
 rInd=0
 for row in dfScenes:
   try:
-    xMat[rInd,20:]=dfPCA[dfPCA.index==row].to_numpy()
+    xMat[rInd,20:]=dfPCA[dfPCA.index==row].to_numpy()[:,:10]
   except:
     errorList.append(row)
   rInd+=1
@@ -115,35 +116,36 @@ confusDict={}
 accVec=np.zeros((10))
 recallVec=np.zeros((10))
 
-trainInd, testInd = trainTestInds(xMat.shape[0],10,3)
+for fold in range(9):
+  trainInd, testInd = trainTestInds(xMat.shape[0],10,fold)
 
+  initLearning(learnRate=.1,rebalance=True, numInput=numInput)
 
-initLearning(learnRate=.1,rebalance=True, numInput=numInput)
+  global model
+  #print('here is the use model:')
+  #print(model)
 
-global model
-#print('here is the use model:')
-#print(model)
+  # or consider trueY instead of trueMat
+  #model.fit(xMat[:10000,:],trueY[:10000,:],batch_size=128,epochs=100,verbose=1):s
+  [histTrain,histVal]=fit(model,xMat[trainInd,:],trueLabs[trainInd],epochs=4000,shuffle=False,valRat=.75,patience=30) #,mustPrune=True,smartInit=True)
+  #[histTrain,histVal]=fit(model,xMat[:10000,:],trueLabs[:10000],batch_size=128,epochs=800,shuffle=True,patience=10),mustPrune=True,smartInit=True)
+  # add smartInit above
+  #batch_size=128,epochs=300,verbose=1,shuffle=True,validation_split=0.3,class_weight=dictWt, callbacks=[early_stopping])
+  #oldResults=model(xMat[:10000,:])
+  #oldLabels=np.argmax(oldResults,axis=1)
 
-# or consider trueY instead of trueMat
-#model.fit(xMat[:10000,:],trueY[:10000,:],batch_size=128,epochs=100,verbose=1):s
-[histTrain,histVal]=fit(model,xMat[trainInd,:],trueLabs[trainInd],epochs=4000,shuffle=False,valRat=.75,patience=30) #,mustPrune=True,smartInit=True)
-#[histTrain,histVal]=fit(model,xMat[:10000,:],trueLabs[:10000],batch_size=128,epochs=800,shuffle=True,patience=10),mustPrune=True,smartInit=True)
-# add smartInit above
-#batch_size=128,epochs=300,verbose=1,shuffle=True,validation_split=0.3,class_weight=dictWt, callbacks=[early_stopping])
-#oldResults=model(xMat[:10000,:])
-#oldLabels=np.argmax(oldResults,axis=1)
+  newResults=fwdPass(torch.Tensor(xMat[testInd,:])).detach().numpy()
+  newLabels=np.argmax(newResults,axis=1)
 
-newResults=fwdPass(torch.Tensor(xMat[testInd,:])).detach().numpy()
-newLabels=np.argmax(newResults,axis=1)
+  yLabels=np.argmax(trueY[testInd,:],axis=1)
 
-yLabels=np.argmax(trueY[testInd,:],axis=1)
-
-
-## save accuracies and network weights on each fold
-#accVec[fold]=accuracy_score(yLabels,newLabels)
-#recallVec[fold]=recall_score(yLabels,newLabels,average='macro')
-#wtsDict[fold]=get_model().fc1.detach().numpy()
-#confusDict[fold]=confusion_matrix(yLabels,newLabels)
+  ## save accuracies and network weights on each fold
+  accVec[fold]=accuracy_score(yLabels,newLabels)
+  recallVec[fold]=recall_score(yLabels,newLabels,average='macro')
+  wtsDict[fold]=get_model().fc1.weight.detach().numpy()
+  confusDict[fold]=confusion_matrix(yLabels,newLabels)
+  print(fold)
+  print("fold completed")
 
 # consider trueLabs
 accuracy=1-np.where(newLabels-yLabels!=0)[0].shape[0]/yLabels.shape[0]
