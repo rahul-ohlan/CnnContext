@@ -103,7 +103,7 @@ def upsample(feats,labs):
    return allUpSamp[:,:-1], allUpSamp[:,-1]
 
 
-def fit(net,feats,labs,batch_size=np.Inf, epochs=20, shuffle=True, valRat=.8,patience=5,mustPrune=False,smartInit=False):
+def fit(net,feats,labs,batch_size=np.Inf, epochs=20, shuffle=True, valRat=.8,patience=5, lambda1=0.001, mustPrune=False,smartInit=False):
     ##train = datasets.MNIST('', train = True, transform = transforms, download = True)
     #train, valid = random_split(train,[50000,10000])
     #trainloader = DataLoader(train, batch_size=32)
@@ -187,7 +187,9 @@ def fit(net,feats,labs,batch_size=np.Inf, epochs=20, shuffle=True, valRat=.8,pat
         target = model(torch.Tensor(data))
         targetVal = model(torch.Tensor(featsVal))
         # Find the Loss
-        loss = criterion(target,torch.LongTensor(labels))
+        allFC_params = torch.cat([x.view(-1) for x in model.fc1.parameters()])
+        l1_loss=lambda1*torch.norm(allFC_params,1)
+        loss = criterion(target,torch.LongTensor(labels)) + l1_loss
         lossVal = criterion(targetVal,torch.LongTensor(labsVal))
         loss_hist.append(loss.item())
         lossVal_hist.append(lossVal.item())
