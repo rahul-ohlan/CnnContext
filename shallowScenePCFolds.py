@@ -23,9 +23,12 @@ dfKnownOverlap=pd.read_csv('LogRewtEK_Oct4.csv')
 
 # convert string to numeric code
 def str2Num(inStr) :
-   possibleVals=['tv', 'chair', 'person', 'potted plant', 'boat', 'bird', 'car',
-       'bus', 'cat', 'airplane', 'dining table', 'couch', 'bottle',
-       'sheep', 'train', 'horse', 'dog', 'motorcycle', 'bicycle', 'cow']
+   possibleVals=['airplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car',
+       'cat', 'chair', 'cow', 'dining table', 'dog', 'horse', 'motorcycle',
+       'person', 'potted plant', 'sheep', 'couch', 'train', 'tv']
+   #possibleVals=['tv', 'chair', 'person', 'potted plant', 'boat', 'bird', 'car',
+   #    'bus', 'cat', 'airplane', 'dining table', 'couch', 'bottle',
+   #    'sheep', 'train', 'horse', 'dog', 'motorcycle', 'bicycle', 'cow']
    for i in range(len(possibleVals)):
         if inStr==possibleVals[i]:
             return i
@@ -42,7 +45,9 @@ def trainTestInds(dataSize,kSplits,numSplit):
 # drop columns where no object-scene info is available
 dfScenes=dfKnownOverlap['Places365 Resnet50 Image Classification']
 #dfKnownOverlap=dfKnownOverlap[dfKnownOverlap.iloc[:,-41:-21].sum(axis=1)!=0]
-dfPCA=pd.read_csv('ScenePrincComp40.csv',index_col=0)
+#dfPCA=pd.read_csv('ScenePrincComp40.csv',index_col=0)
+
+dfPCA=pd.read_csv('gloVeClusterVec.csv',index_col=0)
 
 # initialize xMat and yMat
 # in xMat:
@@ -51,7 +56,8 @@ dfPCA=pd.read_csv('ScenePrincComp40.csv',index_col=0)
 
 # accuracy seems roughly equal with 20, 40, 60 PCs
 #numInput=60 #was 40, 60
-numInput=30
+#numInput=30
+numInput=50
 xMat=np.zeros((dfKnownOverlap.shape[0],numInput))
 xMat[:,:20]=dfKnownOverlap.iloc[:,-63:-43].to_numpy()
 
@@ -59,7 +65,7 @@ errorList=[]
 rInd=0
 for row in dfScenes:
   try:
-    xMat[rInd,20:]=dfPCA[dfPCA.index==row].to_numpy()[:,:10]
+    xMat[rInd,20:]=dfPCA[dfPCA.index==row].to_numpy()[:,:] #:10]
   except:
     errorList.append(row)
   rInd+=1
@@ -115,6 +121,16 @@ wtsDict={}
 confusDict={}
 accVec=np.zeros((10))
 recallVec=np.zeros((10))
+
+print((xMat.mean(axis=0)))
+# normalize data:
+xMatNorm=xMat.copy()
+for col in range(xMat.shape[1]):
+  if np.std(xMat[:,col])>0:
+    xMatNorm[:,col] = (xMat[:,col]-xMat[:,col].mean())/np.std(xMat[:,col])
+  else:
+    print('uhoh '+str(col))
+xMat=xMatNorm
 
 for fold in range(9):
   trainInd, testInd = trainTestInds(xMat.shape[0],10,fold)
